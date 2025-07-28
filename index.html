@@ -6,102 +6,99 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       background: #f0f2f5;
-      text-align: center;
-      padding: 30px;
+      padding: 20px;
+      color: #333;
+      max-width: 700px;
+      margin: auto;
     }
     h1 {
-      color: #2c3e50;
+      text-align: center;
     }
     canvas {
-      max-width: 700px;
-      margin: 30px auto;
+      margin-top: 30px;
     }
     button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: green;
-      color: #fff;
+      background-color: #4CAF50;
+      color: white;
       border: none;
-      border-radius: 6px;
+      padding: 10px 15px;
+      font-size: 16px;
       cursor: pointer;
+      border-radius: 5px;
+      display: block;
+      margin: 20px auto;
     }
-    .info {
-      margin-top: 20px;
-      font-size: 18px;
+    button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
-  <h1>Simulador de Investimento Seguro</h1>
-  <p>Investindo <strong>R$800 por mês</strong> com rendimento de <strong>0,9% ao mês</strong>.</p>
-  <button onclick="simular()">Simular 5 anos</button>
-
-  <div class="info" id="resultado"></div>
-
-  <canvas id="grafico"></canvas>
+  <h1>Simulador de Investimento</h1>
+  <p style="text-align:center;">R$800 por mês com rendimento de 0,9% ao mês por 5 anos.</p>
+  <button onclick="simularInvestimento()">Simular</button>
+  <canvas id="graficoInvestimento" width="600" height="400"></canvas>
 
   <script>
-    function simular() {
-      const aporte = 800;
-      const juros = 0.009;
+    function simularInvestimento() {
+      const aporteMensal = 800;
+      const rendimentoMensal = 0.009; // 0,9%
       const meses = 60;
       let saldo = 0;
-      const totais = [];
-      const investido = [];
-      const mesesLabel = [];
+      const saldos = [];
+      const aportes = [];
 
       for (let i = 1; i <= meses; i++) {
-        saldo *= (1 + juros);
-        saldo += aporte;
-        totais.push(saldo.toFixed(2));
-        investido.push(aporte * i);
-        mesesLabel.push(`${i}º`);
+        saldo = (saldo + aporteMensal) * (1 + rendimentoMensal);
+        saldos.push(saldo.toFixed(2));
+        aportes.push(i * aporteMensal);
       }
 
-      const totalInvestido = aporte * meses;
-      const totalFinal = saldo.toFixed(2);
-      const rendimento = (saldo - totalInvestido).toFixed(2);
-
-      document.getElementById("resultado").innerHTML = `
-        <p><strong>Total Investido:</strong> R$${totalInvestido.toFixed(2)}</p>
-        <p><strong>Total com Juros:</strong> R$${totalFinal}</p>
-        <p><strong>Rendimento:</strong> R$${rendimento}</p>
-      `;
-
-      const ctx = document.getElementById('grafico').getContext('2d');
-      if (window.grafico) window.grafico.destroy(); // Limpar gráfico anterior
+      const ctx = document.getElementById('graficoInvestimento').getContext('2d');
+      if (window.grafico) window.grafico.destroy(); // atualiza se já existir
 
       window.grafico = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: mesesLabel,
+          labels: Array.from({length: meses}, (_, i) => `Mês ${i+1}`),
           datasets: [
             {
               label: 'Total com Juros',
-              data: totais,
+              data: saldos,
               borderColor: 'green',
-              borderWidth: 2,
-              fill: false
+              fill: false,
+              tension: 0.3
             },
             {
-              label: 'Total Investido',
-              data: investido,
+              label: 'Valor Investido (sem juros)',
+              data: aportes,
               borderColor: 'gray',
               borderDash: [5, 5],
-              borderWidth: 2,
-              fill: false
+              fill: false,
+              tension: 0.3
             }
           ]
         },
         options: {
           responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          },
           scales: {
             y: {
-              beginAtZero: true,
-              ticks: {
-                callback: (value) => 'R$' + value.toLocaleString('pt-BR')
+              title: {
+                display: true,
+                text: 'Valor acumulado (R$)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Tempo (meses)'
               }
             }
           }
