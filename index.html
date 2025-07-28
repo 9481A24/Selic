@@ -2,39 +2,37 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<title>Painel de Investimento</title>
+<title>Calculadora Completa de Investimento</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
-  h1 { color: #333; }
-  label { display: block; margin-top: 10px; }
-  input { padding: 6px; width: 150px; }
-  button { margin-top: 15px; padding: 10px 15px; background: #007bff; color: white; border: none; cursor: pointer; }
-  button:hover { background: #0056b3; }
-  #resultado, #grafico { margin-top: 25px; }
+  body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+  label { display: block; margin-top: 15px; font-weight: bold; }
+  input { width: 150px; padding: 8px; margin-top: 5px; }
+  button { margin-top: 20px; padding: 10px 15px; background: #28a745; color: white; border: none; cursor: pointer; }
+  button:hover { background: #218838; }
+  #resultado { margin-top: 25px; font-size: 18px; font-weight: bold; }
+  #grafico { margin-top: 30px; }
 </style>
 </head>
 <body>
 
-<h1>Painel de Investimento Mensal</h1>
+<h1>Calculadora Completa de Investimento</h1>
 
-<label>Valor investido por mês (R$): 
-  <input type="number" id="valorMes" value="800" min="1" step="any" />
+<label>Valor desejado (R$): 
+  <input type="number" id="valorDesejado" value="55000" min="1" />
+</label>
+
+<label>Prazo (meses): 
+  <input type="number" id="prazo" value="24" min="1" />
 </label>
 
 <label>Rendimento mensal esperado (%): 
-  <input type="number" id="rendimento" value="5" min="0" step="0.01" />
+  <input type="number" id="rendimento" value="2" min="0" step="0.01" />
 </label>
 
-<label>Meta de renda mensal desejada (R$): 
-  <input type="number" id="meta" value="1000" min="1" step="any" />
-</label>
-
-<button onclick="calcular()">Calcular projeção</button>
+<button onclick="calcular()">Calcular aporte mensal e mostrar gráfico</button>
 
 <div id="resultado"></div>
 <canvas id="grafico" width="600" height="300"></canvas>
-
-<button id="btnWhats" style="display:none" onclick="enviarWhatsApp()">Enviar relatório pelo WhatsApp</button>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -42,46 +40,41 @@ const ctx = document.getElementById('grafico').getContext('2d');
 let chart;
 
 function calcular() {
-  const valorMes = parseFloat(document.getElementById('valorMes').value);
-  const rendimento = parseFloat(document.getElementById('rendimento').value) / 100;
-  const meta = parseFloat(document.getElementById('meta').value);
+  const S = parseFloat(document.getElementById('valorDesejado').value);
+  const n = parseInt(document.getElementById('prazo').value);
+  const i = parseFloat(document.getElementById('rendimento').value) / 100;
 
-  if (valorMes <= 0 || rendimento <= 0 || meta <= 0) {
-    alert('Preencha todos os campos com valores positivos.');
+  if (S <= 0 || n <= 0 || i < 0) {
+    alert('Preencha todos os campos com valores válidos.');
     return;
   }
 
-  let saldo = 0;
-  let meses = 0;
-  const saldos = [];
-  const labels = [];
-
-  // Calcula mês a mês até saldo gerar renda mensal >= meta
-  while ((saldo * rendimento) < meta) {
-    saldo = saldo * (1 + rendimento) + valorMes;
-    meses++;
-    labels.push('Mês ' + meses);
-    saldos.push(parseFloat(saldo.toFixed(2)));
-    if(meses > 600) break; // para evitar loop infinito, max 50 anos
+  let P;
+  if (i === 0) {
+    P = S / n;
+  } else {
+    const numerador = S * i;
+    const denominador = Math.pow(1 + i, n) - 1;
+    P = numerador / denominador;
   }
 
-  // Salvar dados no localStorage
-  const dados = { valorMes, rendimento: rendimento*100, meta, meses, saldos };
-  localStorage.setItem('investimentoDados', JSON.stringify(dados));
+  document.getElementById('resultado').innerText = 
+    `Você precisa investir aproximadamente R$ ${P.toFixed(2)} por mês durante ${n} meses, com rendimento de ${(i*100).toFixed(2)}% ao mês.`;
 
-  // Mostrar resultado textual
-  const anos = Math.floor(meses / 12);
-  const mesesRest = meses % 12;
-  document.getElementById('resultado').innerHTML = `
-    <h3>Resultado da projeção:</h3>
-    <p>Você atingirá uma renda mensal de R$ <b>${meta.toFixed(2)}</b> em aproximadamente <b>${anos} anos e ${mesesRest} meses</b>.</p>
-    <p>Saldo acumulado estimado: R$ <b>${saldos[saldos.length - 1].toFixed(2)}</b></p>
-  `;
+  // Calcular evolução do saldo mês a mês
+  let saldo = 0;
+  const saldos = [];
+  const labels = [];
+  for(let m = 1; m <= n; m++) {
+    saldo = saldo * (1 + i) + P;
+    saldos.push(parseFloat(saldo.toFixed(2)));
+    labels.push('Mês ' + m);
+  }
 
-  // Mostrar botão WhatsApp
-  document.getElementById('btnWhats').style.display = 'inline-block';
+  // Salvar no localStorage
+  localStorage.setItem('investCalc', JSON.stringify({S, n, i, P, saldos}));
 
-  // Criar gráfico (ou atualizar)
+  // Criar gráfico
   if(chart) chart.destroy();
   chart = new Chart(ctx, {
     type: 'line',
@@ -90,49 +83,28 @@ function calcular() {
       datasets: [{
         label: 'Saldo acumulado (R$)',
         data: saldos,
-        borderColor: 'rgb(0, 123, 255)',
+        borderColor: 'rgb(40,167,69)',
         fill: false,
         tension: 0.1
       }]
     },
     options: {
-      scales: {
-        y: { beginAtZero: true }
-      }
+      scales: { y: { beginAtZero: true } }
     }
   });
 }
 
-function enviarWhatsApp() {
-  const dados = JSON.parse(localStorage.getItem('investimentoDados'));
-  if(!dados) {
-    alert('Nenhum dado salvo para enviar.');
-    return;
-  }
-  const msg = `📊 *Projeção de Investimento*\n
-Valor mensal: R$ ${dados.valorMes.toFixed(2)}
-Rendimento mensal: ${dados.rendimento.toFixed(2)}%
-Meta de renda mensal: R$ ${dados.meta.toFixed(2)}
-Tempo estimado para atingir meta: ${Math.floor(dados.meses/12)} anos e ${dados.meses%12} meses
-Saldo acumulado estimado: R$ ${dados.saldos[dados.saldos.length -1].toFixed(2)}
-  
-#Investimento #MetaFinanceira`;
-
-  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-}
-
-// Ao carregar a página tenta carregar dados salvos
+// Carregar dados salvos ao abrir
 window.onload = () => {
-  const dados = localStorage.getItem('investimentoDados');
+  const dados = localStorage.getItem('investCalc');
   if(dados) {
     const obj = JSON.parse(dados);
-    document.getElementById('valorMes').value = obj.valorMes;
-    document.getElementById('rendimento').value = obj.rendimento;
-    document.getElementById('meta').value = obj.meta;
+    document.getElementById('valorDesejado').value = obj.S;
+    document.getElementById('prazo').value = obj.n;
+    document.getElementById('rendimento').value = (obj.i * 100).toFixed(2);
     calcular();
   }
-};
+}
 </script>
 
 </body>
