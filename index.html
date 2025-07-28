@@ -1,110 +1,104 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simulador de Investimento</title>
+  <meta charset="UTF-8">
+  <title>Simulador de Investimentos</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: Arial, sans-serif;
       background: #f0f2f5;
       padding: 20px;
-      color: #333;
-      max-width: 700px;
-      margin: auto;
-    }
-    h1 {
       text-align: center;
     }
     canvas {
-      margin-top: 30px;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-      display: block;
+      max-width: 600px;
       margin: 20px auto;
-    }
-    button:hover {
-      background-color: #45a049;
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <h1>Simulador de Investimento</h1>
-  <p style="text-align:center;">R$800 por mês com rendimento de 0,9% ao mês por 5 anos.</p>
-  <button onclick="simularInvestimento()">Simular</button>
-  <canvas id="graficoInvestimento" width="600" height="400"></canvas>
+
+  <h2>Simulador de Investimento Mensal</h2>
+
+  <p>Investindo <strong>R$800,00 por mês</strong> durante 12 meses:</p>
+
+  <canvas id="graficoBaixo"></canvas>
+  <canvas id="graficoAlto"></canvas>
 
   <script>
-    function simularInvestimento() {
-      const aporteMensal = 800;
-      const rendimentoMensal = 0.009; // 0,9%
-      const meses = 60;
+    function calcularInvestimento(valorMensal, meses, taxaMensal) {
       let saldo = 0;
-      const saldos = [];
-      const aportes = [];
+      const dados = [];
 
       for (let i = 1; i <= meses; i++) {
-        saldo = (saldo + aporteMensal) * (1 + rendimentoMensal);
-        saldos.push(saldo.toFixed(2));
-        aportes.push(i * aporteMensal);
+        saldo = saldo * (1 + taxaMensal) + valorMensal;
+        dados.push(saldo.toFixed(2));
       }
 
-      const ctx = document.getElementById('graficoInvestimento').getContext('2d');
-      if (window.grafico) window.grafico.destroy(); // atualiza se já existir
+      return dados;
+    }
 
-      window.grafico = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: Array.from({length: meses}, (_, i) => `Mês ${i+1}`),
-          datasets: [
-            {
-              label: 'Total com Juros',
-              data: saldos,
-              borderColor: 'green',
-              fill: false,
-              tension: 0.3
-            },
-            {
-              label: 'Valor Investido (sem juros)',
-              data: aportes,
-              borderColor: 'gray',
-              borderDash: [5, 5],
-              fill: false,
-              tension: 0.3
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'bottom'
-            }
-          },
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: 'Valor acumulado (R$)'
-              }
-            },
-            x: {
-              title: {
-                display: true,
-                text: 'Tempo (meses)'
-              }
-            }
+    const meses = 12;
+    const valorMensal = 800;
+
+    const mesesLabels = Array.from({ length: meses }, (_, i) => `Mês ${i + 1}`);
+    const dadosBaixo = calcularInvestimento(valorMensal, meses, 0.007);
+    const dadosAlto = calcularInvestimento(valorMensal, meses, 0.02);
+
+    // Gráfico 1 - Baixo Risco
+    new Chart(document.getElementById('graficoBaixo'), {
+      type: 'line',
+      data: {
+        labels: mesesLabels,
+        datasets: [{
+          label: 'Investimento Baixo Risco (0,7% ao mês)',
+          data: dadosBaixo,
+          borderColor: 'green',
+          backgroundColor: 'rgba(0, 128, 0, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Crescimento com Baixo Risco'
           }
         }
-      });
-    }
+      }
+    });
+
+    // Gráfico 2 - Alto Risco
+    new Chart(document.getElementById('graficoAlto'), {
+      type: 'line',
+      data: {
+        labels: mesesLabels,
+        datasets: [{
+          label: 'Investimento Alto Risco (2% ao mês)',
+          data: dadosAlto,
+          borderColor: 'red',
+          backgroundColor: 'rgba(255, 0, 0, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Crescimento com Alto Risco'
+          }
+        }
+      }
+    });
   </script>
+
 </body>
 </html>
