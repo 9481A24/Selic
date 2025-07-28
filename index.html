@@ -1,111 +1,105 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<title>Calculadora Completa de Investimento</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
-  label { display: block; margin-top: 15px; font-weight: bold; }
-  input { width: 150px; padding: 8px; margin-top: 5px; }
-  button { margin-top: 20px; padding: 10px 15px; background: #28a745; color: white; border: none; cursor: pointer; }
-  button:hover { background: #218838; }
-  #resultado { margin-top: 25px; font-size: 18px; font-weight: bold; }
-  #grafico { margin-top: 30px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Simulador de Investimento</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    canvas {
+      max-width: 100%;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .resumo {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 1.2em;
+    }
+  </style>
 </head>
 <body>
 
-<h1>Calculadora Completa de Investimento</h1>
+  <h1>Simulador de Investimento</h1>
+  <h2>R$800/mês desde 07/02/2013 - Rendimento de 0,8% ao mês</h2>
+  
+  <canvas id="graficoInvestimento" height="100"></canvas>
+  
+  <div class="resumo" id="resumo"></div>
 
-<label>Valor desejado (R$): 
-  <input type="number" id="valorDesejado" value="55000" min="1" />
-</label>
+  <script>
+    const aporteMensal = 800;
+    const rendimentoMensal = 0.008; // 0,8%
+    const dataInicio = new Date("2013-02-07");
+    const dataAtual = new Date();
+    const labels = [];
+    const valores = [];
 
-<label>Prazo (meses): 
-  <input type="number" id="prazo" value="24" min="1" />
-</label>
+    let saldo = 0;
+    let totalInvestido = 0;
 
-<label>Rendimento mensal esperado (%): 
-  <input type="number" id="rendimento" value="2" min="0" step="0.01" />
-</label>
+    const data = new Date(dataInicio);
+    while (data <= dataAtual) {
+      saldo = (saldo + aporteMensal) * (1 + rendimentoMensal);
+      totalInvestido += aporteMensal;
 
-<button onclick="calcular()">Calcular aporte mensal e mostrar gráfico</button>
+      const mesAno = `${String(data.getMonth()+1).padStart(2, '0')}/${data.getFullYear()}`;
+      labels.push(mesAno);
+      valores.push(saldo.toFixed(2));
 
-<div id="resultado"></div>
-<canvas id="grafico" width="600" height="300"></canvas>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const ctx = document.getElementById('grafico').getContext('2d');
-let chart;
-
-function calcular() {
-  const S = parseFloat(document.getElementById('valorDesejado').value);
-  const n = parseInt(document.getElementById('prazo').value);
-  const i = parseFloat(document.getElementById('rendimento').value) / 100;
-
-  if (S <= 0 || n <= 0 || i < 0) {
-    alert('Preencha todos os campos com valores válidos.');
-    return;
-  }
-
-  let P;
-  if (i === 0) {
-    P = S / n;
-  } else {
-    const numerador = S * i;
-    const denominador = Math.pow(1 + i, n) - 1;
-    P = numerador / denominador;
-  }
-
-  document.getElementById('resultado').innerText = 
-    `Você precisa investir aproximadamente R$ ${P.toFixed(2)} por mês durante ${n} meses, com rendimento de ${(i*100).toFixed(2)}% ao mês.`;
-
-  // Calcular evolução do saldo mês a mês
-  let saldo = 0;
-  const saldos = [];
-  const labels = [];
-  for(let m = 1; m <= n; m++) {
-    saldo = saldo * (1 + i) + P;
-    saldos.push(parseFloat(saldo.toFixed(2)));
-    labels.push('Mês ' + m);
-  }
-
-  // Salvar no localStorage
-  localStorage.setItem('investCalc', JSON.stringify({S, n, i, P, saldos}));
-
-  // Criar gráfico
-  if(chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Saldo acumulado (R$)',
-        data: saldos,
-        borderColor: 'rgb(40,167,69)',
-        fill: false,
-        tension: 0.1
-      }]
-    },
-    options: {
-      scales: { y: { beginAtZero: true } }
+      data.setMonth(data.getMonth() + 1);
     }
-  });
-}
 
-// Carregar dados salvos ao abrir
-window.onload = () => {
-  const dados = localStorage.getItem('investCalc');
-  if(dados) {
-    const obj = JSON.parse(dados);
-    document.getElementById('valorDesejado').value = obj.S;
-    document.getElementById('prazo').value = obj.n;
-    document.getElementById('rendimento').value = (obj.i * 100).toFixed(2);
-    calcular();
-  }
-}
-</script>
+    document.getElementById("resumo").innerHTML = `
+      <p><strong>Total Investido:</strong> R$ ${totalInvestido.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+      <p><strong>Total com Rendimento:</strong> R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+      <p><strong>Período:</strong> ${labels[0]} até ${labels[labels.length-1]}</p>
+    `;
 
+    const ctx = document.getElementById("graficoInvestimento").getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Valor acumulado (R$)",
+          data: valores,
+          fill: true,
+          borderColor: "green",
+          backgroundColor: "rgba(0, 128, 0, 0.1)",
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "top" },
+          title: {
+            display: true,
+            text: "Crescimento do Investimento Mensal"
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return "R$ " + value.toLocaleString('pt-BR');
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
 </body>
 </html>
