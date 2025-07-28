@@ -1,104 +1,139 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Simulador de Investimentos</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      padding: 20px;
-      text-align: center;
-    }
-    canvas {
-      max-width: 600px;
-      margin: 20px auto;
-      background: #fff;
-      padding: 10px;
-      border-radius: 8px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Painel de Investimento</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+  h1 { color: #333; }
+  label { display: block; margin-top: 10px; }
+  input { padding: 6px; width: 150px; }
+  button { margin-top: 15px; padding: 10px 15px; background: #007bff; color: white; border: none; cursor: pointer; }
+  button:hover { background: #0056b3; }
+  #resultado, #grafico { margin-top: 25px; }
+</style>
 </head>
 <body>
 
-  <h2>Simulador de Investimento Mensal</h2>
+<h1>Painel de Investimento Mensal</h1>
 
-  <p>Investindo <strong>R$800,00 por mês</strong> durante 12 meses:</p>
+<label>Valor investido por mês (R$): 
+  <input type="number" id="valorMes" value="800" min="1" step="any" />
+</label>
 
-  <canvas id="graficoBaixo"></canvas>
-  <canvas id="graficoAlto"></canvas>
+<label>Rendimento mensal esperado (%): 
+  <input type="number" id="rendimento" value="5" min="0" step="0.01" />
+</label>
 
-  <script>
-    function calcularInvestimento(valorMensal, meses, taxaMensal) {
-      let saldo = 0;
-      const dados = [];
+<label>Meta de renda mensal desejada (R$): 
+  <input type="number" id="meta" value="1000" min="1" step="any" />
+</label>
 
-      for (let i = 1; i <= meses; i++) {
-        saldo = saldo * (1 + taxaMensal) + valorMensal;
-        dados.push(saldo.toFixed(2));
+<button onclick="calcular()">Calcular projeção</button>
+
+<div id="resultado"></div>
+<canvas id="grafico" width="600" height="300"></canvas>
+
+<button id="btnWhats" style="display:none" onclick="enviarWhatsApp()">Enviar relatório pelo WhatsApp</button>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('grafico').getContext('2d');
+let chart;
+
+function calcular() {
+  const valorMes = parseFloat(document.getElementById('valorMes').value);
+  const rendimento = parseFloat(document.getElementById('rendimento').value) / 100;
+  const meta = parseFloat(document.getElementById('meta').value);
+
+  if (valorMes <= 0 || rendimento <= 0 || meta <= 0) {
+    alert('Preencha todos os campos com valores positivos.');
+    return;
+  }
+
+  let saldo = 0;
+  let meses = 0;
+  const saldos = [];
+  const labels = [];
+
+  // Calcula mês a mês até saldo gerar renda mensal >= meta
+  while ((saldo * rendimento) < meta) {
+    saldo = saldo * (1 + rendimento) + valorMes;
+    meses++;
+    labels.push('Mês ' + meses);
+    saldos.push(parseFloat(saldo.toFixed(2)));
+    if(meses > 600) break; // para evitar loop infinito, max 50 anos
+  }
+
+  // Salvar dados no localStorage
+  const dados = { valorMes, rendimento: rendimento*100, meta, meses, saldos };
+  localStorage.setItem('investimentoDados', JSON.stringify(dados));
+
+  // Mostrar resultado textual
+  const anos = Math.floor(meses / 12);
+  const mesesRest = meses % 12;
+  document.getElementById('resultado').innerHTML = `
+    <h3>Resultado da projeção:</h3>
+    <p>Você atingirá uma renda mensal de R$ <b>${meta.toFixed(2)}</b> em aproximadamente <b>${anos} anos e ${mesesRest} meses</b>.</p>
+    <p>Saldo acumulado estimado: R$ <b>${saldos[saldos.length - 1].toFixed(2)}</b></p>
+  `;
+
+  // Mostrar botão WhatsApp
+  document.getElementById('btnWhats').style.display = 'inline-block';
+
+  // Criar gráfico (ou atualizar)
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Saldo acumulado (R$)',
+        data: saldos,
+        borderColor: 'rgb(0, 123, 255)',
+        fill: false,
+        tension: 0.1
+      }]
+    },
+    options: {
+      scales: {
+        y: { beginAtZero: true }
       }
-
-      return dados;
     }
+  });
+}
 
-    const meses = 12;
-    const valorMensal = 800;
+function enviarWhatsApp() {
+  const dados = JSON.parse(localStorage.getItem('investimentoDados'));
+  if(!dados) {
+    alert('Nenhum dado salvo para enviar.');
+    return;
+  }
+  const msg = `📊 *Projeção de Investimento*\n
+Valor mensal: R$ ${dados.valorMes.toFixed(2)}
+Rendimento mensal: ${dados.rendimento.toFixed(2)}%
+Meta de renda mensal: R$ ${dados.meta.toFixed(2)}
+Tempo estimado para atingir meta: ${Math.floor(dados.meses/12)} anos e ${dados.meses%12} meses
+Saldo acumulado estimado: R$ ${dados.saldos[dados.saldos.length -1].toFixed(2)}
+  
+#Investimento #MetaFinanceira`;
 
-    const mesesLabels = Array.from({ length: meses }, (_, i) => `Mês ${i + 1}`);
-    const dadosBaixo = calcularInvestimento(valorMensal, meses, 0.007);
-    const dadosAlto = calcularInvestimento(valorMensal, meses, 0.02);
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
 
-    // Gráfico 1 - Baixo Risco
-    new Chart(document.getElementById('graficoBaixo'), {
-      type: 'line',
-      data: {
-        labels: mesesLabels,
-        datasets: [{
-          label: 'Investimento Baixo Risco (0,7% ao mês)',
-          data: dadosBaixo,
-          borderColor: 'green',
-          backgroundColor: 'rgba(0, 128, 0, 0.1)',
-          fill: true,
-          tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Crescimento com Baixo Risco'
-          }
-        }
-      }
-    });
-
-    // Gráfico 2 - Alto Risco
-    new Chart(document.getElementById('graficoAlto'), {
-      type: 'line',
-      data: {
-        labels: mesesLabels,
-        datasets: [{
-          label: 'Investimento Alto Risco (2% ao mês)',
-          data: dadosAlto,
-          borderColor: 'red',
-          backgroundColor: 'rgba(255, 0, 0, 0.1)',
-          fill: true,
-          tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Crescimento com Alto Risco'
-          }
-        }
-      }
-    });
-  </script>
+// Ao carregar a página tenta carregar dados salvos
+window.onload = () => {
+  const dados = localStorage.getItem('investimentoDados');
+  if(dados) {
+    const obj = JSON.parse(dados);
+    document.getElementById('valorMes').value = obj.valorMes;
+    document.getElementById('rendimento').value = obj.rendimento;
+    document.getElementById('meta').value = obj.meta;
+    calcular();
+  }
+};
+</script>
 
 </body>
 </html>
